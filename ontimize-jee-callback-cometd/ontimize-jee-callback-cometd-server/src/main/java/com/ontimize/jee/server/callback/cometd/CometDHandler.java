@@ -17,6 +17,7 @@ import org.cometd.bayeux.server.ServerMessage;
 import org.cometd.bayeux.server.ServerSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import com.ontimize.jee.common.callback.CallbackWrapperMessage;
@@ -29,6 +30,7 @@ import com.ontimize.jee.server.callback.ICallbackHandler;
  * The Class CometDHandler.
  */
 @Component("CometDCallbackService")
+@Lazy(value = true)
 @Service("chat")
 public class CometDHandler implements ICallbackHandler {
 
