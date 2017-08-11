@@ -158,7 +158,7 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 	 * @see com.ontimize.jee.desktopclient.callback.ICallbackClientHandler#addWebSocketEventListener(com.ontimize.jee.desktopclient.callback.ICallbackEventListener)
 	 */
 	@Override
-	public void addWebSocketEventListener(ICallbackEventListener listener) {
+	public void addCallbackEventListener(ICallbackEventListener listener) {
 		this.listeners.add(listener);
 	}
 
@@ -167,7 +167,7 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 	 * @see com.ontimize.jee.desktopclient.callback.ICallbackClientHandler#removeWebSocketEventListener(com.ontimize.jee.desktopclient.callback.ICallbackEventListener)
 	 */
 	@Override
-	public void removeWebSocketEventListener(ICallbackEventListener listener) {
+	public void removeCallbackEventListener(ICallbackEventListener listener) {
 		this.listeners.remove(listener);
 	}
 
@@ -180,47 +180,7 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 	protected void connect() throws Exception {
 		HttpClient httpClient = new HttpClient();
 		httpClient.start();
-		httpClient.setCookieStore(new CookieStore() {
-
-			@Override
-			public boolean removeAll() {
-				return false;
-			}
-
-			@Override
-			public boolean remove(URI uri, HttpCookie cookie) {
-				System.out.println("remove");
-				return false;
-			}
-
-			@Override
-			public List<URI> getURIs() {
-				System.out.println("geturis");
-				return null;
-			}
-
-			@Override
-			public List<HttpCookie> getCookies() {
-				System.out.println("getcookies");
-				List<Cookie> cookies = OntimizeHessianHttpClientSessionProcessorFactory.getCookieStore().getCookies();
-				List<HttpCookie> res = new ArrayList<>();
-				for (Cookie cookie : cookies) {
-					res.add(new HttpCookie(cookie.getName(), cookie.getValue()));
-				}
-				return res;
-			}
-
-			@Override
-			public List<HttpCookie> get(URI uri) {
-				System.out.println("geturi");
-				return this.getCookies();
-			}
-
-			@Override
-			public void add(URI uri, HttpCookie cookie) {
-				System.out.println("add");
-			}
-		});
+		httpClient.setCookieStore(new OJettyCookieStore());
 
 		this.setBayeuxClient(new BayeuxClient(this.getCallbackUrl(), new LongPollingTransport(null, httpClient) {
 			@Override
@@ -391,6 +351,70 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 			CallbackWrapperMessage wrappedMessage = CallbackWrapperMessage.deserialize((String) message.getData());
 			CometDCallbackClientHandler.this.fireMessageEvent(wrappedMessage);
 
+		}
+	}
+
+	/**
+	 * The Class OJettyCookieStore.
+	 */
+	private static class OJettyCookieStore implements CookieStore {
+
+		/*
+		 * (non-Javadoc)
+		 * @see java.net.CookieStore#removeAll()
+		 */
+		@Override
+		public boolean removeAll() {
+			return false;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see java.net.CookieStore#remove(java.net.URI, java.net.HttpCookie)
+		 */
+		@Override
+		public boolean remove(URI uri, HttpCookie cookie) {
+			return false;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see java.net.CookieStore#getURIs()
+		 */
+		@Override
+		public List<URI> getURIs() {
+			return null;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see java.net.CookieStore#getCookies()
+		 */
+		@Override
+		public List<HttpCookie> getCookies() {
+			List<Cookie> cookies = OntimizeHessianHttpClientSessionProcessorFactory.getCookieStore().getCookies();
+			List<HttpCookie> res = new ArrayList<>();
+			for (Cookie cookie : cookies) {
+				res.add(new HttpCookie(cookie.getName(), cookie.getValue()));
+			}
+			return res;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see java.net.CookieStore#get(java.net.URI)
+		 */
+		@Override
+		public List<HttpCookie> get(URI uri) {
+			return this.getCookies();
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see java.net.CookieStore#add(java.net.URI, java.net.HttpCookie)
+		 */
+		@Override
+		public void add(URI uri, HttpCookie cookie) {
 		}
 	}
 }
