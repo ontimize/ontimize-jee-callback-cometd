@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 
-<project default="deploy to artifactory ontimize-jee-report" basedir=".">
+<project default="deploy to artifactory ontimize-jee-callback-cometd" basedir=".">
 
-	<target name="deploy to artifactory ontimize-jee-report">
+	<target name="deploy to artifactory ontimize-jee-callback-cometd">
 		<property file="build.properties" />
 		
 		<mkdir dir="${deployment.basepath}" />
@@ -30,7 +30,7 @@
 			<arg value="verify" /> 
 			<arg value="site" /> 
 			<arg value="install" /> 
-<!-- 			<arg value="deploy:deploy" />  -->
+ 			<arg value="deploy:deploy" />  
 		</exec>
 	</target>
 </project>
