@@ -183,6 +183,7 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		httpClient.setCookieStore(new OJettyCookieStore());
 
 		this.setBayeuxClient(new BayeuxClient(this.getCallbackUrl(), new LongPollingTransport(null, httpClient) {
+
 			@Override
 			protected void customize(Request request) {
 				super.customize(request);
@@ -210,6 +211,7 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 	 */
 	protected void initialize() {
 		this.getBayeuxClient().batch(new Runnable() {
+
 			@Override
 			public void run() {
 				ClientSessionChannel chatChannel = CometDCallbackClientHandler.this.getBayeuxClient().getChannel(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL);
@@ -414,7 +416,6 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		 * @see java.net.CookieStore#add(java.net.URI, java.net.HttpCookie)
 		 */
 		@Override
-		public void add(URI uri, HttpCookie cookie) {
-		}
+		public void add(URI uri, HttpCookie cookie) {}
 	}
 }

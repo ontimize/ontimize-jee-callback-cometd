@@ -16,54 +16,15 @@ import org.slf4j.LoggerFactory;
 public class OntimizeBayeuxServerImpl extends BayeuxServerImpl {
 
 	private static final Logger logger = LoggerFactory.getLogger(OntimizeBayeuxServerImpl.class);
+
 	@Override
 	protected void initializeServerTransports() {
 		if (this.getTransports().isEmpty()) {
-			String option = (String) this.getOption(BayeuxServerImpl.TRANSPORTS_OPTION);
-			if (option == null) {
-				// Order is important, see #findHttpTransport()
-				ServerTransport transport = this.newWebSocketTransport();
-				if (transport != null) {
-					this.addTransport(transport);
-				}
-				this.addTransport(this.newJSONTransport());
-				this.addTransport(new JSONPTransport(this));
-			} else {
-				for (String className : option.split(",")) {
-					ServerTransport transport = this.newServerTransport(className.trim());
-					if (transport != null) {
-						this.addTransport(transport);
-					}
-				}
-
-				if (this.getTransports().isEmpty()) {
-					throw new IllegalArgumentException("Option '" + BayeuxServerImpl.TRANSPORTS_OPTION + "' does not contain a valid list of server transport class names");
-				}
-			}
+			this.initializeTransports();
 		}
 
 		if (this.getAllowedTransports().isEmpty()) {
-			List<String> transportNames = new ArrayList<>();
-			for (Transport transport : this.getTransports()) {
-				transportNames.add(transport.getName());
-			}
-			String option = (String) this.getOption(BayeuxServerImpl.ALLOWED_TRANSPORTS_OPTION);
-			if (option == null) {
-				this.setAllowedTransports(transportNames);
-			} else {
-				List<String> allowedTransportNames = new ArrayList<>();
-				for (String transportName : option.split(",")) {
-					if (transportNames.contains(transportName)) {
-						allowedTransportNames.add(transportName);
-					}
-				}
-				this.setAllowedTransports(allowedTransportNames);
-
-				if (this.getAllowedTransports().isEmpty()) {
-					throw new IllegalArgumentException(
-							"Option '" + BayeuxServerImpl.ALLOWED_TRANSPORTS_OPTION + "' does not contain at least one configured server transport name");
-				}
-			}
+			this.initializeAllowedTransports();
 		}
 
 		List<String> activeTransports = new ArrayList<>();
@@ -77,6 +38,53 @@ public class OntimizeBayeuxServerImpl extends BayeuxServerImpl {
 		OntimizeBayeuxServerImpl.logger.debug("Active transports: {}", activeTransports);
 	}
 
+	protected void initializeAllowedTransports() {
+		List<String> transportNames = new ArrayList<>();
+		for (Transport transport : this.getTransports()) {
+			transportNames.add(transport.getName());
+		}
+		String option = (String) this.getOption(BayeuxServerImpl.ALLOWED_TRANSPORTS_OPTION);
+		if (option == null) {
+			this.setAllowedTransports(transportNames);
+		} else {
+			List<String> allowedTransportNames = new ArrayList<>();
+			for (String transportName : option.split(",")) {
+				if (transportNames.contains(transportName)) {
+					allowedTransportNames.add(transportName);
+				}
+			}
+			this.setAllowedTransports(allowedTransportNames);
+
+			if (this.getAllowedTransports().isEmpty()) {
+				throw new IllegalArgumentException("Option '" + BayeuxServerImpl.ALLOWED_TRANSPORTS_OPTION + "' does not contain at least one configured server transport name");
+			}
+		}
+	}
+
+	protected void initializeTransports() {
+		String option = (String) this.getOption(BayeuxServerImpl.TRANSPORTS_OPTION);
+		if (option == null) {
+			// Order is important, see #findHttpTransport()
+			ServerTransport transport = this.newWebSocketTransport();
+			if (transport != null) {
+				this.addTransport(transport);
+			}
+			this.addTransport(this.newJSONTransport());
+			this.addTransport(new JSONPTransport(this));
+		} else {
+			for (String className : option.split(",")) {
+				ServerTransport transport = this.newServerTransport(className.trim());
+				if (transport != null) {
+					this.addTransport(transport);
+				}
+			}
+
+			if (this.getTransports().isEmpty()) {
+				throw new IllegalArgumentException("Option '" + BayeuxServerImpl.TRANSPORTS_OPTION + "' does not contain a valid list of server transport class names");
+			}
+		}
+	}
+
 	private ServerTransport newWebSocketTransport() {
 		try {
 			ClassLoader loader = Thread.currentThread().getContextClassLoader();
@@ -88,6 +96,7 @@ public class OntimizeBayeuxServerImpl extends BayeuxServerImpl {
 			}
 			return transport;
 		} catch (Exception x) {
+			OntimizeBayeuxServerImpl.logger.error(null, x);
 			return null;
 		}
 	}
@@ -98,6 +107,7 @@ public class OntimizeBayeuxServerImpl extends BayeuxServerImpl {
 			loader.loadClass("javax.servlet.ReadListener");
 			return new OntimizeAsyncJSONTransport(this);
 		} catch (Exception x) {
+			OntimizeBayeuxServerImpl.logger.error(null, x);
 			return new JSONTransport(this);
 		}
 	}
@@ -110,6 +120,7 @@ public class OntimizeBayeuxServerImpl extends BayeuxServerImpl {
 			Constructor<? extends ServerTransport> constructor = klass.getConstructor(BayeuxServerImpl.class);
 			return constructor.newInstance(this);
 		} catch (Exception x) {
+			OntimizeBayeuxServerImpl.logger.error(null, x);
 			return null;
 		}
 	}

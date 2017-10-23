@@ -10,24 +10,18 @@ import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.cometd.bayeux.server.ServerMessage.Mutable;
 import org.cometd.server.BayeuxServerImpl;
-import org.cometd.server.ServerSessionImpl;
 import org.cometd.server.transport.AsyncJSONTransport;
 import org.eclipse.jetty.util.Utf8StringBuilder;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 public class OntimizeAsyncJSONTransport extends AsyncJSONTransport {
+
 	private static final int BUFFER_CAPACITY = 512;
 
 	public OntimizeAsyncJSONTransport(BayeuxServerImpl bayeux) {
 		super(bayeux);
-	}
-
-	@Override
-	protected Mutable processMetaHandshake(HttpServletRequest request, HttpServletResponse response, ServerSessionImpl session, Mutable message) {
-		return super.processMetaHandshake(request, response, session, message);
 	}
 
 	@Override
@@ -44,18 +38,20 @@ public class OntimizeAsyncJSONTransport extends AsyncJSONTransport {
 		asyncContext.setTimeout(0);
 		Charset charset = Charset.forName(encoding);
 		ReadListener reader = "UTF-8".equals(charset.name()) ? new OntimizeUTF8Reader(request, response, asyncContext) : new OntimizeCharsetReader(request, response, asyncContext,
-				charset);
+		        charset);
 		ServletInputStream input = request.getInputStream();
 		input.setReadListener(reader);
 	}
 
 	protected abstract class OntimizeAbstractReader extends AbstractReader {
+
 		private final SecurityContext	delegateSecurityContext;
 
 		/**
 		 * The {@link SecurityContext} that was on the {@link SecurityContextHolder} prior to being set to the delegateSecurityContext.
 		 */
 		private SecurityContext			originalSecurityContext;
+
 		protected OntimizeAbstractReader(HttpServletRequest request, HttpServletResponse response, AsyncContext asyncContext) {
 			super(request, response, asyncContext);
 			this.delegateSecurityContext = SecurityContextHolder.getContext();
@@ -83,6 +79,7 @@ public class OntimizeAsyncJSONTransport extends AsyncJSONTransport {
 	}
 
 	protected class OntimizeUTF8Reader extends OntimizeAbstractReader {
+
 		private final Utf8StringBuilder content = new Utf8StringBuilder(OntimizeAsyncJSONTransport.BUFFER_CAPACITY);
 
 		protected OntimizeUTF8Reader(HttpServletRequest request, HttpServletResponse response, AsyncContext asyncContext) {
@@ -101,6 +98,7 @@ public class OntimizeAsyncJSONTransport extends AsyncJSONTransport {
 	}
 
 	protected class OntimizeCharsetReader extends OntimizeAbstractReader {
+
 		private byte[]			content	= new byte[OntimizeAsyncJSONTransport.BUFFER_CAPACITY];
 		private final Charset	charset;
 		private int				count;
@@ -137,6 +135,5 @@ public class OntimizeAsyncJSONTransport extends AsyncJSONTransport {
 			return new String(this.content, 0, this.count, this.charset);
 		}
 	}
-
 
 }

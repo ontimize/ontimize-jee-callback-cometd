@@ -49,6 +49,7 @@ public class CometDInitializer implements ServletContextAware {
 	}
 
 	public static class MyAppAuthenticator extends DefaultSecurityPolicy implements ServerSession.RemoveListener {
+
 		@Override
 		public boolean canHandshake(BayeuxServer server, ServerSession session, ServerMessage message) {
 			if (session.isLocalSession()) {

@@ -35,10 +35,10 @@ import com.ontimize.jee.server.callback.ICallbackHandler;
 public class CometDHandler implements ICallbackHandler {
 
 	/** The Constant ATTRIBUTE_PRINCIPAL. */
-	private static final String ATTRIBUTE_PRINCIPAL = "principal";
+	private static final String					ATTRIBUTE_PRINCIPAL	= "principal";
 
 	/** The Constant logger. */
-	private static final Logger					logger							= LoggerFactory.getLogger(CometDHandler.class);
+	private static final Logger					logger				= LoggerFactory.getLogger(CometDHandler.class);
 
 	/** The bayeux server. */
 	@Inject
@@ -107,6 +107,7 @@ public class CometDHandler implements ICallbackHandler {
 	private void register(ServerSession client, ServerMessage message, Map<String, Object> data) {
 		this.registerMember(client);
 		client.addListener(new ServerSession.RemoveListener() {
+
 			@Override
 			public void removed(ServerSession session, boolean timeout) {
 				CometDHandler.this.unregisterMember(session);
@@ -210,7 +211,6 @@ public class CometDHandler implements ICallbackHandler {
 			peer.deliver(this.serverSession, textMessage);
 		}
 	}
-
 
 	/**
 	 * Builds the text message.
