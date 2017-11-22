@@ -18,6 +18,7 @@ import org.cometd.client.BayeuxClient;
 import org.cometd.client.transport.LongPollingTransport;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Request;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -27,6 +28,7 @@ import com.ontimize.jee.common.callback.cometd.CometDCallbackConstants;
 import com.ontimize.jee.common.exceptions.OntimizeJEEException;
 import com.ontimize.jee.common.hessian.OntimizeHessianHttpClientSessionProcessorFactory;
 import com.ontimize.jee.common.hessian.OntimizeHessianProxyFactoryBean;
+import com.ontimize.jee.common.tools.ObjectTools;
 import com.ontimize.jee.common.tools.StringTools;
 import com.ontimize.jee.desktopclient.callback.ICallbackClientHandler;
 import com.ontimize.jee.desktopclient.callback.ICallbackEventListener;
@@ -49,7 +51,7 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 	private volatile BayeuxClient				bayeuxClient;
 
 	/** The chat listener. */
-	protected final MessageListener				chatListener			= new MessageListener();
+	protected final MessageListener				ojeeMessageListener		= new MessageListener();
 	// private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(8);
 	/** The callback relative url. */
 	// private final WebSocketContainer webSocketContainer = ContainerProvider.getWebSocketContainer();
@@ -178,12 +180,9 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 	 *             the exception
 	 */
 	protected void connect() throws Exception {
-		HttpClient httpClient = new HttpClient();
+		HttpClient httpClient = new HttpClient(new SslContextFactory(true));
 		httpClient.start();
-		httpClient.setCookieStore(new OJettyCookieStore());
-
-		this.setBayeuxClient(new BayeuxClient(this.getCallbackUrl(), new LongPollingTransport(null, httpClient) {
-
+		LongPollingTransport longPollingTransport = new LongPollingTransport(null, httpClient) {
 			@Override
 			protected void customize(Request request) {
 				super.customize(request);
@@ -191,7 +190,11 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 					request.header("Authorization", "Bearer " + OntimizeHessianHttpClientSessionProcessorFactory.JWT_TOKEN);
 				}
 			}
-		}));
+		};
+		this.setBayeuxClient(new BayeuxClient(this.getCallbackUrl(), longPollingTransport));
+		// Override BayeuxClient default InLineCookieStore -> mix jetty and hessian cookies
+		longPollingTransport.setCookieStore(new OJettyCookieStore());
+
 		// Map<String, Object> options = new HashMap<>();
 		// options.put(ClientTransport.JSON_CONTEXT_OPTION, new JacksonJSONContextClient());
 		// options.put(ClientTransport.MAX_NETWORK_DELAY_OPTION, ConsoleChatClient.MAX_NETWORK_DELAY);
@@ -211,11 +214,15 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 	 */
 	protected void initialize() {
 		this.getBayeuxClient().batch(new Runnable() {
-
 			@Override
 			public void run() {
-				ClientSessionChannel chatChannel = CometDCallbackClientHandler.this.getBayeuxClient().getChannel(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL);
-				chatChannel.subscribe(CometDCallbackClientHandler.this.chatListener);
+				ClientSessionChannel ojeeCallbackChannel = CometDCallbackClientHandler.this.getBayeuxClient().getChannel(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL);
+				ojeeCallbackChannel.subscribe(CometDCallbackClientHandler.this.ojeeMessageListener, new MessageListener() {
+					@Override
+					public void onMessage(ClientSessionChannel channel, Message message) {
+						CometDCallbackClientHandler.logger.info("On subscribe message from initialize: {}", message);
+					}
+				});
 			}
 		});
 	}
@@ -226,8 +233,21 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 	protected void connectionEstablished() {
 		CometDCallbackClientHandler.logger.info("system: Connection to Server Opened");
 		Map<String, Object> data = new HashMap<>();
+		final ClientSessionChannel ojeeCallbackChannel = this.bayeuxClient.getChannel(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL);
+		this.getBayeuxClient().batch(new Runnable() {
+			@Override
+			public void run() {
+				ojeeCallbackChannel.subscribe(CometDCallbackClientHandler.this.ojeeMessageListener, new MessageListener() {
+					@Override
+					public void onMessage(ClientSessionChannel channel, Message message) {
+						CometDCallbackClientHandler.logger.info("On subscribe message from connectionEstablished: {}", message);
+					}
+				});
+			}
+		});
+
 		data.put(CometDCallbackConstants.KEY_ACTION, CometDCallbackConstants.ACTION_REGISTER);
-		this.bayeuxClient.getChannel(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL).publish(data);
+		ojeeCallbackChannel.publish(data);
 	}
 
 	/**
@@ -360,24 +380,10 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 	 * The Class OJettyCookieStore.
 	 */
 	private static class OJettyCookieStore implements CookieStore {
-
-		/*
-		 * (non-Javadoc)
-		 * @see java.net.CookieStore#removeAll()
+		/**
+		 * The client cookies on this client .
 		 */
-		@Override
-		public boolean removeAll() {
-			return false;
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * @see java.net.CookieStore#remove(java.net.URI, java.net.HttpCookie)
-		 */
-		@Override
-		public boolean remove(URI uri, HttpCookie cookie) {
-			return false;
-		}
+		protected List<HttpCookie> cookies = new ArrayList<>();
 
 		/*
 		 * (non-Javadoc)
@@ -394,12 +400,46 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		 */
 		@Override
 		public List<HttpCookie> getCookies() {
-			List<Cookie> cookies = OntimizeHessianHttpClientSessionProcessorFactory.getCookieStore().getCookies();
+			// Combine cookies from this store and the hessian store -> Ensure to seem a single client
 			List<HttpCookie> res = new ArrayList<>();
-			for (Cookie cookie : cookies) {
-				res.add(new HttpCookie(cookie.getName(), cookie.getValue()));
+
+			// 1º- Add hessian cookies (distinct cookieName, not equals, for instance ignoring domain)
+			List<Cookie> hessianCookies = OntimizeHessianHttpClientSessionProcessorFactory.getCookieStore().getCookies();
+			for (Cookie cookie : hessianCookies) {
+				if (!this.checkCookieExists(res, cookie)) {
+					res.add(new HttpCookie(cookie.getName(), cookie.getValue()));
+				}
+			}
+
+			// 2º- Add my cookies (distinct cookieName, not equals, for instance ignoring domain)
+			for (HttpCookie cookie : this.cookies) {
+				if (!this.checkCookieExists(res, cookie)) {
+					res.add(cookie);
+				}
 			}
 			return res;
+		}
+
+		private boolean checkCookieExists(List<HttpCookie> cookieList, Cookie cookieToSearch) {
+			if (cookieList != null) {
+				for (HttpCookie cookie : cookieList) {
+					if (ObjectTools.safeIsEquals(cookieToSearch.getName(), cookie.getName())) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		private boolean checkCookieExists(List<HttpCookie> cookieList, HttpCookie cookieToSearch) {
+			if (cookieList != null) {
+				for (HttpCookie cookie : cookieList) {
+					if (ObjectTools.safeIsEquals(cookieToSearch.getName(), cookie.getName())) {
+						return true;
+					}
+				}
+			}
+			return false;
 		}
 
 		/*
@@ -416,6 +456,27 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		 * @see java.net.CookieStore#add(java.net.URI, java.net.HttpCookie)
 		 */
 		@Override
-		public void add(URI uri, HttpCookie cookie) {}
+		public void add(URI uri, HttpCookie cookie) {
+			this.cookies.add(cookie);
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see java.net.CookieStore#removeAll()
+		 */
+		@Override
+		public boolean removeAll() {
+			this.cookies.clear();
+			return true;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see java.net.CookieStore#remove(java.net.URI, java.net.HttpCookie)
+		 */
+		@Override
+		public boolean remove(URI uri, HttpCookie cookie) {
+			return this.cookies.remove(cookie);
+		}
 	}
 }
