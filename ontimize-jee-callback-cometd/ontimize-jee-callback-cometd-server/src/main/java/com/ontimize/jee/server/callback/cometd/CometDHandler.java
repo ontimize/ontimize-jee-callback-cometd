@@ -70,7 +70,6 @@ public class CometDHandler implements ICallbackHandler {
 	 */
 	@Configure(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL)
 	protected void configureMembers(ConfigurableServerChannel channel) {
-		// channel.addAuthorizer(GrantAuthorizer.GRANT_PUBLISH);
 		channel.setPersistent(true);
 	}
 

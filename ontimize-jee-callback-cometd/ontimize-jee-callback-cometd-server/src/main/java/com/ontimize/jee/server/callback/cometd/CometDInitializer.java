@@ -40,7 +40,6 @@ public class CometDInitializer implements ServletContextAware {
 		bean.setOption("ws.cometdURLMapping", "/cometd/*");
 		bean.setOption(ServletContext.class.getName(), this.servletContext);
 
-		// bean.setTransports(new WebSocketTransport(bean), new JSONTransport(bean), new JSONPTransport(bean));
 		bean.addListener(new ChannelDebugListener());
 		bean.addListener(new SessionDebugListener());
 		bean.addExtension(new ExtensionDebug());
@@ -61,30 +60,6 @@ public class CometDInitializer implements ServletContextAware {
 				return true;
 			}
 			return false;
-
-			// Map<String, Object> ext = message.getExt();
-			// if (ext == null) {
-			// return false;
-			// }
-
-			// Map<String, Object> authentication = (Map<String, Object>) ext.get("com.myapp.authn");s
-			// if (authentication == null) {
-			// return false;
-			// }
-
-			// Object authenticationData = verify(authentication);
-			// if (authenticationData == null) {
-			// return false;
-			// }
-
-			// Authentication successful
-
-			// Link authentication data to the session
-
-			// Be notified when the session disappears
-			// session.addListener(this);
-
-			// return true;
 		}
 
 		@Override
@@ -163,6 +138,5 @@ public class CometDInitializer implements ServletContextAware {
 			ExtensionDebug.logger.debug("sendMeta to: {}, message: {}", to, message);
 			return true;
 		}
-
 	}
 }

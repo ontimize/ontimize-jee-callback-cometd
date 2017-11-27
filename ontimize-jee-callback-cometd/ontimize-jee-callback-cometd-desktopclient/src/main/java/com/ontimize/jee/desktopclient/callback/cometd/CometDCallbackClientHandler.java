@@ -52,9 +52,8 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 
 	/** The chat listener. */
 	protected final MessageListener				ojeeMessageListener		= new MessageListener();
-	// private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(8);
+
 	/** The callback relative url. */
-	// private final WebSocketContainer webSocketContainer = ContainerProvider.getWebSocketContainer();
 	private String								callbackRelativeUrl;
 
 	/** The callback url. */
@@ -143,16 +142,11 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 				this.setCallbackUrl(base + this.getCallbackRelativeUrl());
 			}
 		}
-		// new Thread("") {
-		// @Override
-		// public void run() {
 		try {
 			CometDCallbackClientHandler.this.connect();
 		} catch (Exception error) {
 			CometDCallbackClientHandler.logger.error("Error connecting callback cometd. WONT BE RETRIED", error);
 		}
-		// }
-		// }.start();
 	}
 
 	/*
@@ -186,7 +180,7 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 			@Override
 			protected void customize(Request request) {
 				super.customize(request);
-				if (!StringTools.isEmpty((OntimizeHessianHttpClientSessionProcessorFactory.JWT_TOKEN))) {
+				if (!StringTools.isEmpty(OntimizeHessianHttpClientSessionProcessorFactory.JWT_TOKEN)) {
 					request.header("Authorization", "Bearer " + OntimizeHessianHttpClientSessionProcessorFactory.JWT_TOKEN);
 				}
 			}
@@ -194,14 +188,6 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		this.setBayeuxClient(new BayeuxClient(this.getCallbackUrl(), longPollingTransport));
 		// Override BayeuxClient default InLineCookieStore -> mix jetty and hessian cookies
 		longPollingTransport.setCookieStore(new OJettyCookieStore());
-
-		// Map<String, Object> options = new HashMap<>();
-		// options.put(ClientTransport.JSON_CONTEXT_OPTION, new JacksonJSONContextClient());
-		// options.put(ClientTransport.MAX_NETWORK_DELAY_OPTION, ConsoleChatClient.MAX_NETWORK_DELAY);
-		// // Differently from HTTP where the idle timeout is adjusted if it is a /meta/connect
-		// // for WebSocket we need an idle timeout that is longer than the /meta/connect timeout.
-		// options.put(AbstractWebSocketTransport.IDLE_TIMEOUT_OPTION, ConsoleChatClient.META_CONNECT_TIMEOUT + httpClient.getIdleTimeout());
-		// this.client = new BayeuxClient(url, new WebSocketTransport(options, this.scheduler, this.webSocketContainer));
 
 		this.getBayeuxClient().getChannel(Channel.META_HANDSHAKE).addListener(new InitializerListener());
 		this.getBayeuxClient().getChannel(Channel.META_CONNECT).addListener(new ConnectionListener());
