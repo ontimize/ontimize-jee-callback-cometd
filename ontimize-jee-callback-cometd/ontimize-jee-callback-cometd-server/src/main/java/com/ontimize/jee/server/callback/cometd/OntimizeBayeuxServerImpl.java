@@ -96,7 +96,7 @@ public class OntimizeBayeuxServerImpl extends BayeuxServerImpl {
 			}
 			return transport;
 		} catch (Exception x) {
-			OntimizeBayeuxServerImpl.logger.error(null, x);
+			OntimizeBayeuxServerImpl.logger.debug(null, x);
 			return null;
 		}
 	}
@@ -107,7 +107,7 @@ public class OntimizeBayeuxServerImpl extends BayeuxServerImpl {
 			loader.loadClass("javax.servlet.ReadListener");
 			return new OntimizeAsyncJSONTransport(this);
 		} catch (Exception x) {
-			OntimizeBayeuxServerImpl.logger.error(null, x);
+			OntimizeBayeuxServerImpl.logger.debug(null, x);
 			return new JSONTransport(this);
 		}
 	}
