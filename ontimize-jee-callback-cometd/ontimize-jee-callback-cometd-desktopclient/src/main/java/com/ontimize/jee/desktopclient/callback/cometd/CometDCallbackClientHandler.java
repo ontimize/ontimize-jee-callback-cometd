@@ -189,29 +189,11 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		// Override BayeuxClient default InLineCookieStore -> mix jetty and hessian cookies
 		longPollingTransport.setCookieStore(new OJettyCookieStore());
 
-		this.getBayeuxClient().getChannel(Channel.META_HANDSHAKE).addListener(new InitializerListener());
 		this.getBayeuxClient().getChannel(Channel.META_CONNECT).addListener(new ConnectionListener());
 
 		this.getBayeuxClient().handshake();
 	}
 
-	/**
-	 * Initialize.
-	 */
-	protected void initialize() {
-		this.getBayeuxClient().batch(new Runnable() {
-			@Override
-			public void run() {
-				ClientSessionChannel ojeeCallbackChannel = CometDCallbackClientHandler.this.getBayeuxClient().getChannel(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL);
-				ojeeCallbackChannel.subscribe(CometDCallbackClientHandler.this.ojeeMessageListener, new MessageListener() {
-					@Override
-					public void onMessage(ClientSessionChannel channel, Message message) {
-						CometDCallbackClientHandler.logger.info("On subscribe message from initialize: {}", message);
-					}
-				});
-			}
-		});
-	}
 
 	/**
 	 * Connection established.
@@ -283,26 +265,6 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		}
 	}
 
-	/**
-	 * The listener interface for receiving initializer events. The class that is interested in processing a initializer event implements this interface, and the object created
-	 * with that class is registered with a component using the component's <code>addInitializerListener<code> method. When the initializer event occurs, that object's appropriate
-	 * method is invoked.
-	 *
-	 * @see InitializerEvent
-	 */
-	protected class InitializerListener implements ClientSessionChannel.MessageListener {
-
-		/*
-		 * (non-Javadoc)
-		 * @see org.cometd.bayeux.client.ClientSessionChannel.MessageListener#onMessage(org.cometd.bayeux.client.ClientSessionChannel, org.cometd.bayeux.Message)
-		 */
-		@Override
-		public void onMessage(ClientSessionChannel channel, Message message) {
-			if (message.isSuccessful()) {
-				CometDCallbackClientHandler.this.initialize();
-			}
-		}
-	}
 
 	/**
 	 * The listener interface for receiving connection events. The class that is interested in processing a connection event implements this interface, and the object created with
