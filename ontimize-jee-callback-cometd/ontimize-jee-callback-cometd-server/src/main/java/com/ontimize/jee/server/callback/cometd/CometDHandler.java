@@ -205,9 +205,11 @@ public class CometDHandler implements ICallbackHandler {
 	@Override
 	public void sendBroadcastMessage(Integer messageType, String messageSubtype, Object ob) {
 		ServerMessage.Mutable textMessage = this.buildTextMessage(messageType, messageSubtype, ob);
-		for (String peerId : this.members) {
-			ServerSession peer = this.bayeuxServer.getSession(peerId);
-			peer.deliver(this.serverSession, textMessage);
+		synchronized (this.members) {
+			for (String peerId : this.members) {
+				ServerSession peer = this.bayeuxServer.getSession(peerId);
+				peer.deliver(this.serverSession, textMessage);
+			}
 		}
 	}
 
@@ -241,10 +243,12 @@ public class CometDHandler implements ICallbackHandler {
 			return res;
 		}
 
-		for (String peerId : this.members) {
-			ServerSession peer = this.bayeuxServer.getSession(peerId);
-			if (userLogin.equals(peer.getAttribute(CometDHandler.ATTRIBUTE_PRINCIPAL))) {
-				res.add(new CometDCallbackSession(peer));
+		synchronized (this.members) {
+			for (String peerId : this.members) {
+				ServerSession peer = this.bayeuxServer.getSession(peerId);
+				if (userLogin.equals(peer.getAttribute(CometDHandler.ATTRIBUTE_PRINCIPAL))) {
+					res.add(new CometDCallbackSession(peer));
+				}
 			}
 		}
 		return res;
