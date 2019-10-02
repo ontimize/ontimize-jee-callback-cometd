@@ -3,6 +3,7 @@ package com.ontimize.jee.desktopclient.callback.cometd;
 import java.net.CookieStore;
 import java.net.HttpCookie;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,8 +27,10 @@ import org.springframework.beans.factory.InitializingBean;
 import com.ontimize.jee.common.callback.CallbackWrapperMessage;
 import com.ontimize.jee.common.callback.cometd.CometDCallbackConstants;
 import com.ontimize.jee.common.exceptions.OntimizeJEEException;
+import com.ontimize.jee.common.exceptions.OntimizeJEERuntimeException;
 import com.ontimize.jee.common.hessian.OntimizeHessianHttpClientSessionProcessorFactory;
 import com.ontimize.jee.common.hessian.OntimizeHessianProxyFactoryBean;
+import com.ontimize.jee.common.jackson.OntimizeMapper;
 import com.ontimize.jee.common.tools.ObjectTools;
 import com.ontimize.jee.common.tools.StringTools;
 import com.ontimize.jee.desktopclient.callback.ICallbackClientHandler;
@@ -317,10 +320,22 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		 */
 		@Override
 		public void onMessage(ClientSessionChannel channel, Message message) {
+			try {
 			CometDCallbackClientHandler.logger.debug("callback message received");
-			CallbackWrapperMessage wrappedMessage = CallbackWrapperMessage.deserialize((String) message.getData());
+				CallbackWrapperMessage wrappedMessage = this.deserialize((String) message.getData());
 			CometDCallbackClientHandler.this.fireMessageEvent(wrappedMessage);
+			} catch (Exception error) {
+				CometDCallbackClientHandler.logger.error(null, error);
+			}
+		}
 
+		public CallbackWrapperMessage deserialize(String message) {
+			try {
+				String newMessage = new String(java.util.Base64.getDecoder().decode(message), StandardCharsets.ISO_8859_1);
+				return new OntimizeMapper().readValue(newMessage, CallbackWrapperMessage.class);
+			} catch (Exception error) {
+				throw new OntimizeJEERuntimeException(error);
+			}
 		}
 	}
 
