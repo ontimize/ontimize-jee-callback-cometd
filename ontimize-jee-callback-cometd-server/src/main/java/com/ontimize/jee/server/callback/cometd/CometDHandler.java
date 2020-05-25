@@ -1,6 +1,7 @@
 package com.ontimize.jee.server.callback.cometd;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,8 @@ import org.springframework.stereotype.Component;
 
 import com.ontimize.jee.common.callback.CallbackWrapperMessage;
 import com.ontimize.jee.common.callback.cometd.CometDCallbackConstants;
+import com.ontimize.jee.common.exceptions.OntimizeJEERuntimeException;
+import com.ontimize.jee.common.jackson.OntimizeMapper;
 import com.ontimize.jee.server.callback.CallbackSession;
 import com.ontimize.jee.server.callback.ICallbackEventListener;
 import com.ontimize.jee.server.callback.ICallbackHandler;
@@ -87,12 +90,20 @@ public class CometDHandler implements ICallbackHandler {
 		if (CometDCallbackConstants.ACTION_REGISTER.equals(data.get(CometDCallbackConstants.KEY_ACTION))) {
 			this.register(client, message, data);
 		} else {
-			CallbackWrapperMessage wrappedMessage = CallbackWrapperMessage.deserialize((String) data.get(CometDCallbackConstants.KEY_DATA));
+			CallbackWrapperMessage wrappedMessage = this.deserialize((String) data.get(CometDCallbackConstants.KEY_DATA));
 			this.fireMessageReceived(new CometDCallbackSession(client), wrappedMessage);
 		}
 
 	}
 
+	public CallbackWrapperMessage deserialize(String message) {
+		try {
+			String newMessage = new String(java.util.Base64.getDecoder().decode(message), StandardCharsets.ISO_8859_1);
+			return new OntimizeMapper().readValue(newMessage, CallbackWrapperMessage.class);
+		} catch (Exception error) {
+			throw new OntimizeJEERuntimeException(error);
+		}
+	}
 	/**
 	 * Register.
 	 *

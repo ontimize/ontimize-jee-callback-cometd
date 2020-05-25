@@ -3,6 +3,7 @@ package com.ontimize.jee.desktopclient.callback.cometd;
 import java.net.CookieStore;
 import java.net.HttpCookie;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,8 +27,10 @@ import org.springframework.beans.factory.InitializingBean;
 import com.ontimize.jee.common.callback.CallbackWrapperMessage;
 import com.ontimize.jee.common.callback.cometd.CometDCallbackConstants;
 import com.ontimize.jee.common.exceptions.OntimizeJEEException;
+import com.ontimize.jee.common.exceptions.OntimizeJEERuntimeException;
 import com.ontimize.jee.common.hessian.OntimizeHessianHttpClientSessionProcessorFactory;
 import com.ontimize.jee.common.hessian.OntimizeHessianProxyFactoryBean;
+import com.ontimize.jee.common.jackson.OntimizeMapper;
 import com.ontimize.jee.common.tools.ObjectTools;
 import com.ontimize.jee.common.tools.StringTools;
 import com.ontimize.jee.desktopclient.callback.ICallbackClientHandler;
@@ -194,7 +197,6 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		this.getBayeuxClient().handshake();
 	}
 
-
 	/**
 	 * Connection established.
 	 */
@@ -202,17 +204,12 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		CometDCallbackClientHandler.logger.info("system: Connection to Server Opened");
 		Map<String, Object> data = new HashMap<>();
 		final ClientSessionChannel ojeeCallbackChannel = this.bayeuxClient.getChannel(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL);
-		this.getBayeuxClient().batch(new Runnable() {
+		this.getBayeuxClient().batch(() -> ojeeCallbackChannel.subscribe(CometDCallbackClientHandler.this.ojeeMessageListener, new MessageListener() {
 			@Override
-			public void run() {
-				ojeeCallbackChannel.subscribe(CometDCallbackClientHandler.this.ojeeMessageListener, new MessageListener() {
-					@Override
-					public void onMessage(ClientSessionChannel channel, Message message) {
-						CometDCallbackClientHandler.logger.info("On subscribe message from connectionEstablished: {}", message);
-					}
-				});
+			public void onMessage(ClientSessionChannel channel, Message message) {
+				CometDCallbackClientHandler.logger.info("On subscribe message from connectionEstablished: {}", message);
 			}
-		});
+		}));
 
 		data.put(CometDCallbackConstants.KEY_ACTION, CometDCallbackConstants.ACTION_REGISTER);
 		ojeeCallbackChannel.publish(data);
@@ -265,7 +262,6 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		}
 	}
 
-
 	/**
 	 * The listener interface for receiving connection events. The class that is interested in processing a connection event implements this interface, and the object created with
 	 * that class is registered with a component using the component's <code>addConnectionListener<code> method. When the connection event occurs, that object's appropriate method
@@ -317,10 +313,22 @@ public class CometDCallbackClientHandler implements ICallbackClientHandler, Init
 		 */
 		@Override
 		public void onMessage(ClientSessionChannel channel, Message message) {
-			CometDCallbackClientHandler.logger.debug("callback message received");
-			CallbackWrapperMessage wrappedMessage = CallbackWrapperMessage.deserialize((String) message.getData());
-			CometDCallbackClientHandler.this.fireMessageEvent(wrappedMessage);
+			try {
+				CometDCallbackClientHandler.logger.debug("callback message received");
+				CallbackWrapperMessage wrappedMessage = this.deserialize((String) message.getData());
+				CometDCallbackClientHandler.this.fireMessageEvent(wrappedMessage);
+			} catch (Exception error) {
+				CometDCallbackClientHandler.logger.error(null, error);
+			}
+		}
 
+		public CallbackWrapperMessage deserialize(String message) {
+			try {
+				String newMessage = new String(java.util.Base64.getDecoder().decode(message), StandardCharsets.ISO_8859_1);
+				return new OntimizeMapper().readValue(newMessage, CallbackWrapperMessage.class);
+			} catch (Exception error) {
+				throw new OntimizeJEERuntimeException(error);
+			}
 		}
 	}
 
