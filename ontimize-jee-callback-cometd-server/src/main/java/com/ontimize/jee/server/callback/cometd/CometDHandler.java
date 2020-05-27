@@ -51,17 +51,17 @@ public class CometDHandler implements ICallbackHandler {
 	@Session
 	private ServerSession						serverSession;
 	/** The message listeners. */
-	private final List<ICallbackEventListener>	messageListeners;
-
+	private final List<ICallbackEventListener>			messageListeners;
+	
 	/** The members. */
-	private final List<String>					members;
+	private final Set<String>					members;
 
 	/**
 	 * Instantiates a new comet D handler.
 	 */
 	public CometDHandler() {
 		super();
-		this.members = new ArrayList<>();
+		this.members = new HashSet<>();
 		this.messageListeners = new ArrayList<>();
 	}
 
