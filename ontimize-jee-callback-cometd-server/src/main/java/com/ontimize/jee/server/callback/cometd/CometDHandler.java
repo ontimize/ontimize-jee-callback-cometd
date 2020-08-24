@@ -39,242 +39,232 @@ import com.ontimize.jee.server.callback.ICallbackHandler;
 @Service("chat")
 public class CometDHandler implements ICallbackHandler {
 
-	/** The Constant ATTRIBUTE_PRINCIPAL. */
-	private static final String					ATTRIBUTE_PRINCIPAL	= "principal";
+    /** The Constant ATTRIBUTE_PRINCIPAL. */
+    private static final String ATTRIBUTE_PRINCIPAL = "principal";
 
-	/** The Constant logger. */
-	private static final Logger					logger				= LoggerFactory.getLogger(CometDHandler.class);
+    /** The Constant logger. */
+    private static final Logger logger = LoggerFactory.getLogger(CometDHandler.class);
 
-	/** The bayeux server. */
-	@Inject
-	private BayeuxServer						bayeuxServer;
+    /** The bayeux server. */
+    @Inject
+    private BayeuxServer bayeuxServer;
 
-	/** The server session. */
-	@Session
-	private ServerSession						serverSession;
-	/** The message listeners. */
-	private final List<ICallbackEventListener>			messageListeners;
-	
-	/** The members. */
-	private final Set<String>					members;
+    /** The server session. */
+    @Session
+    private ServerSession serverSession;
 
-	/**
-	 * Instantiates a new comet D handler.
-	 */
-	public CometDHandler() {
-		super();
-		this.members = new HashSet<>();
-		this.messageListeners = new ArrayList<>();
-	}
+    /** The message listeners. */
+    private final List<ICallbackEventListener> messageListeners;
 
-	/**
-	 * Configure members.
-	 *
-	 * @param channel
-	 *            the channel
-	 */
-	@Configure(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL)
-	protected void configureMembers(ConfigurableServerChannel channel) {
-		channel.setPersistent(true);
-	}
+    /** The members. */
+    private final Set<String> members;
 
-	/**
-	 * Handle membership.
-	 *
-	 * @param client
-	 *            the client
-	 * @param message
-	 *            the message
-	 */
-	@Listener(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL)
-	public void handleMembership(ServerSession client, ServerMessage message) {
-		Map<String, Object> data = message.getDataAsMap();
-		if (CometDCallbackConstants.ACTION_REGISTER.equals(data.get(CometDCallbackConstants.KEY_ACTION))) {
-			this.register(client, message, data);
-		} else {
-			CallbackWrapperMessage wrappedMessage = this.deserialize((String) data.get(CometDCallbackConstants.KEY_DATA));
-			this.fireMessageReceived(new CometDCallbackSession(client), wrappedMessage);
-		}
+    /**
+     * Instantiates a new comet D handler.
+     */
+    public CometDHandler() {
+        super();
+        this.members = new HashSet<>();
+        this.messageListeners = new ArrayList<>();
+    }
 
-	}
+    /**
+     * Configure members.
+     * @param channel the channel
+     */
+    @Configure(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL)
+    protected void configureMembers(ConfigurableServerChannel channel) {
+        channel.setPersistent(true);
+    }
 
-	public CallbackWrapperMessage deserialize(String message) {
-		try {
-			String newMessage = new String(java.util.Base64.getDecoder().decode(message), StandardCharsets.ISO_8859_1);
-			return new OntimizeMapper().readValue(newMessage, CallbackWrapperMessage.class);
-		} catch (Exception error) {
-			throw new OntimizeJEERuntimeException(error);
-		}
-	}
-	/**
-	 * Register.
-	 *
-	 * @param client
-	 *            the client
-	 * @param message
-	 *            the message
-	 * @param data
-	 *            the data
-	 */
-	private void register(ServerSession client, ServerMessage message, Map<String, Object> data) {
-		this.registerMember(client);
-		client.addListener(new ServerSession.RemoveListener() {
+    /**
+     * Handle membership.
+     * @param client the client
+     * @param message the message
+     */
+    @Listener(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL)
+    public void handleMembership(ServerSession client, ServerMessage message) {
+        Map<String, Object> data = message.getDataAsMap();
+        if (CometDCallbackConstants.ACTION_REGISTER.equals(data.get(CometDCallbackConstants.KEY_ACTION))) {
+            this.register(client, message, data);
+        } else {
+            CallbackWrapperMessage wrappedMessage = this
+                .deserialize((String) data.get(CometDCallbackConstants.KEY_DATA));
+            this.fireMessageReceived(new CometDCallbackSession(client), wrappedMessage);
+        }
 
-			@Override
-			public void removed(ServerSession session, boolean timeout) {
-				CometDHandler.this.unregisterMember(session);
-			}
-		});
-	}
+    }
 
-	/**
-	 * Register member.
-	 *
-	 * @param client
-	 *            the client
-	 */
-	protected void registerMember(ServerSession client) {
-		client.setAttribute(CometDHandler.ATTRIBUTE_PRINCIPAL, org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName());
-		CometDHandler.logger.info("Callback registering for principal {}", client.getAttribute(CometDHandler.ATTRIBUTE_PRINCIPAL));
-		synchronized (this.members) {
-			this.members.add(client.getId());
-		}
-	}
+    public CallbackWrapperMessage deserialize(String message) {
+        try {
+            String newMessage = new String(java.util.Base64.getDecoder().decode(message), StandardCharsets.ISO_8859_1);
+            return new OntimizeMapper().readValue(newMessage, CallbackWrapperMessage.class);
+        } catch (Exception error) {
+            throw new OntimizeJEERuntimeException(error);
+        }
+    }
 
-	/**
-	 * Unregister member.
-	 *
-	 * @param client
-	 *            the client
-	 */
-	protected void unregisterMember(ServerSession client) {
-		CometDHandler.logger.info("Callback UNregistering for principal {}", client.getAttribute(CometDHandler.ATTRIBUTE_PRINCIPAL));
-		synchronized (CometDHandler.this.members) {
-			CometDHandler.this.members.remove(client.getId());
-		}
-	}
+    /**
+     * Register.
+     * @param client the client
+     * @param message the message
+     * @param data the data
+     */
+    private void register(ServerSession client, ServerMessage message, Map<String, Object> data) {
+        this.registerMember(client);
+        client.addListener(new ServerSession.RemoveListener() {
 
-	/*
-	 * (non-Javadoc)
-	 * @see com.ontimize.jee.server.callback.ICallbackHandler#addCallbackEventListener(com.ontimize.jee.server.callback.ICallbackEventListener)
-	 */
-	@Override
-	public void addCallbackEventListener(ICallbackEventListener listener) {
-		synchronized (this.messageListeners) {
-			this.messageListeners.add(listener);
-		}
-	}
+            @Override
+            public void removed(ServerSession session, boolean timeout) {
+                CometDHandler.this.unregisterMember(session);
+            }
+        });
+    }
 
-	/**
-	 * Fire message received.
-	 *
-	 * @param session
-	 *            the session
-	 * @param message
-	 *            the message
-	 */
-	protected void fireMessageReceived(CometDCallbackSession session, CallbackWrapperMessage message) {
-		synchronized (this.messageListeners) {
-			for (ICallbackEventListener listener : this.messageListeners) {
-				listener.onCallbackMessageReceived(session, message);
-			}
-		}
-	}
+    /**
+     * Register member.
+     * @param client the client
+     */
+    protected void registerMember(ServerSession client) {
+        client.setAttribute(CometDHandler.ATTRIBUTE_PRINCIPAL,
+                org.springframework.security.core.context.SecurityContextHolder.getContext()
+                    .getAuthentication()
+                    .getName());
+        CometDHandler.logger.info("Callback registering for principal {}",
+                client.getAttribute(CometDHandler.ATTRIBUTE_PRINCIPAL));
+        synchronized (this.members) {
+            this.members.add(client.getId());
+        }
+    }
 
-	/**
-	 * Send message.
-	 *
-	 * @param messageType
-	 *            the message type
-	 * @param messageSubtype
-	 *            the message subtype
-	 * @param ob
-	 *            the ob
-	 * @param receivers
-	 *            the receivers
-	 */
-	@Override
-	public void sendMessage(Integer messageType, String messageSubtype, Object ob, CallbackSession... receivers) {
-		ServerMessage.Mutable textMessage = this.buildTextMessage(messageType, messageSubtype, ob);
-		for (CallbackSession session : receivers) {
-			this.getCometDSession(session).deliver(this.serverSession, textMessage);
-		}
-	}
+    /**
+     * Unregister member.
+     * @param client the client
+     */
+    protected void unregisterMember(ServerSession client) {
+        CometDHandler.logger.info("Callback UNregistering for principal {}",
+                client.getAttribute(CometDHandler.ATTRIBUTE_PRINCIPAL));
+        synchronized (CometDHandler.this.members) {
+            CometDHandler.this.members.remove(client.getId());
+        }
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * @see com.ontimize.jee.server.callback.ICallbackHandler#sendMessage(java.lang.Integer, java.lang.String, java.lang.Object, com.ontimize.jee.server.callback.CallbackSession)
-	 */
-	@Override
-	public void sendMessage(Integer messageType, String messageSubtype, Object ob, CallbackSession receiver) throws IOException {
-		ServerMessage.Mutable textMessage = this.buildTextMessage(messageType, messageSubtype, ob);
-		this.getCometDSession(receiver).deliver(this.serverSession, textMessage);
-	}
+    /*
+     * (non-Javadoc)
+     *
+     * @see com.ontimize.jee.server.callback.ICallbackHandler#addCallbackEventListener(com.ontimize.jee.
+     * server.callback.ICallbackEventListener)
+     */
+    @Override
+    public void addCallbackEventListener(ICallbackEventListener listener) {
+        synchronized (this.messageListeners) {
+            this.messageListeners.add(listener);
+        }
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * @see com.ontimize.jee.server.callback.ICallbackHandler#sendBroadcastMessage(java.lang.Integer, java.lang.String, java.lang.Object)
-	 */
-	@Override
-	public void sendBroadcastMessage(Integer messageType, String messageSubtype, Object ob) {
-		ServerMessage.Mutable textMessage = this.buildTextMessage(messageType, messageSubtype, ob);
-		synchronized (this.members) {
-			for (String peerId : this.members) {
-				ServerSession peer = this.bayeuxServer.getSession(peerId);
-				peer.deliver(this.serverSession, textMessage);
-			}
-		}
-	}
+    /**
+     * Fire message received.
+     * @param session the session
+     * @param message the message
+     */
+    protected void fireMessageReceived(CometDCallbackSession session, CallbackWrapperMessage message) {
+        synchronized (this.messageListeners) {
+            for (ICallbackEventListener listener : this.messageListeners) {
+                listener.onCallbackMessageReceived(session, message);
+            }
+        }
+    }
 
-	/**
-	 * Builds the text message.
-	 *
-	 * @param messageType
-	 *            the message type
-	 * @param messageSubtype
-	 *            the message subtype
-	 * @param ob
-	 *            the ob
-	 * @return the server message. mutable
-	 */
-	protected ServerMessage.Mutable buildTextMessage(Integer messageType, String messageSubtype, Object ob) {
-		ServerMessage.Mutable msg = this.bayeuxServer.newMessage();
-		msg.setChannel(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL);
-		msg.setData(new CallbackWrapperMessage(messageType, messageSubtype, ob).serialize());
-		msg.setLazy(false);
-		return msg;
-	}
+    /**
+     * Send message.
+     * @param messageType the message type
+     * @param messageSubtype the message subtype
+     * @param ob the ob
+     * @param receivers the receivers
+     */
+    @Override
+    public void sendMessage(Integer messageType, String messageSubtype, Object ob, CallbackSession... receivers) {
+        ServerMessage.Mutable textMessage = this.buildTextMessage(messageType, messageSubtype, ob);
+        for (CallbackSession session : receivers) {
+            this.getCometDSession(session).deliver(this.serverSession, textMessage);
+        }
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * @see com.ontimize.jee.server.callback.ICallbackHandler#getSessionsForUser(java.lang.String)
-	 */
-	@Override
-	public List<CallbackSession> getSessionsForUser(String userLogin) {
-		List<CallbackSession> res = new ArrayList<>();
-		if (userLogin == null) {
-			return res;
-		}
+    /*
+     * (non-Javadoc)
+     *
+     * @see com.ontimize.jee.server.callback.ICallbackHandler#sendMessage(java.lang.Integer,
+     * java.lang.String, java.lang.Object, com.ontimize.jee.server.callback.CallbackSession)
+     */
+    @Override
+    public void sendMessage(Integer messageType, String messageSubtype, Object ob, CallbackSession receiver)
+            throws IOException {
+        ServerMessage.Mutable textMessage = this.buildTextMessage(messageType, messageSubtype, ob);
+        this.getCometDSession(receiver).deliver(this.serverSession, textMessage);
+    }
 
-		synchronized (this.members) {
-			for (String peerId : this.members) {
-				ServerSession peer = this.bayeuxServer.getSession(peerId);
-				if (userLogin.equals(peer.getAttribute(CometDHandler.ATTRIBUTE_PRINCIPAL))) {
-					res.add(new CometDCallbackSession(peer));
-				}
-			}
-		}
-		return res;
-	}
+    /*
+     * (non-Javadoc)
+     *
+     * @see com.ontimize.jee.server.callback.ICallbackHandler#sendBroadcastMessage(java.lang.Integer,
+     * java.lang.String, java.lang.Object)
+     */
+    @Override
+    public void sendBroadcastMessage(Integer messageType, String messageSubtype, Object ob) {
+        ServerMessage.Mutable textMessage = this.buildTextMessage(messageType, messageSubtype, ob);
+        synchronized (this.members) {
+            for (String peerId : this.members) {
+                ServerSession peer = this.bayeuxServer.getSession(peerId);
+                peer.deliver(this.serverSession, textMessage);
+            }
+        }
+    }
 
-	/**
-	 * Gets the web socket session.
-	 *
-	 * @param session
-	 *            the session
-	 * @return the web socket session
-	 */
-	protected ServerSession getCometDSession(CallbackSession session) {
-		return (ServerSession) session.getNativeSession();
-	}
+    /**
+     * Builds the text message.
+     * @param messageType the message type
+     * @param messageSubtype the message subtype
+     * @param ob the ob
+     * @return the server message. mutable
+     */
+    protected ServerMessage.Mutable buildTextMessage(Integer messageType, String messageSubtype, Object ob) {
+        ServerMessage.Mutable msg = this.bayeuxServer.newMessage();
+        msg.setChannel(CometDCallbackConstants.ONTIMIZE_JEE_CALLBACK_CHANNEL);
+        msg.setData(new CallbackWrapperMessage(messageType, messageSubtype, ob).serialize());
+        msg.setLazy(false);
+        return msg;
+    }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see com.ontimize.jee.server.callback.ICallbackHandler#getSessionsForUser(java.lang.String)
+     */
+    @Override
+    public List<CallbackSession> getSessionsForUser(String userLogin) {
+        List<CallbackSession> res = new ArrayList<>();
+        if (userLogin == null) {
+            return res;
+        }
+
+        synchronized (this.members) {
+            for (String peerId : this.members) {
+                ServerSession peer = this.bayeuxServer.getSession(peerId);
+                if (userLogin.equals(peer.getAttribute(CometDHandler.ATTRIBUTE_PRINCIPAL))) {
+                    res.add(new CometDCallbackSession(peer));
+                }
+            }
+        }
+        return res;
+    }
+
+    /**
+     * Gets the web socket session.
+     * @param session the session
+     * @return the web socket session
+     */
+    protected ServerSession getCometDSession(CallbackSession session) {
+        return (ServerSession) session.getNativeSession();
+    }
+
 }

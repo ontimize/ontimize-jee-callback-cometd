@@ -12,40 +12,42 @@ import org.springframework.stereotype.Component;
 @Component
 public class Processor implements DestructionAwareBeanPostProcessor {
 
-	@Autowired
-	private BayeuxServer				bayeuxServer;
-	private ServerAnnotationProcessor	serverAnnotProcessor;
+    @Autowired
+    private BayeuxServer bayeuxServer;
 
-	@PostConstruct
-	private void init() {
-		this.serverAnnotProcessor = new ServerAnnotationProcessor(this.bayeuxServer);
-	}
+    private ServerAnnotationProcessor serverAnnotProcessor;
 
-	@PreDestroy
-	private void destroy() {
-		// empty
-	}
+    @PostConstruct
+    private void init() {
+        this.serverAnnotProcessor = new ServerAnnotationProcessor(this.bayeuxServer);
+    }
 
-	@Override
-	public Object postProcessBeforeInitialization(Object bean, String name) {
-		this.serverAnnotProcessor.processDependencies(bean);
-		this.serverAnnotProcessor.processConfigurations(bean);
-		this.serverAnnotProcessor.processCallbacks(bean);
-		return bean;
-	}
+    @PreDestroy
+    private void destroy() {
+        // empty
+    }
 
-	@Override
-	public Object postProcessAfterInitialization(Object bean, String name) {
-		return bean;
-	}
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String name) {
+        this.serverAnnotProcessor.processDependencies(bean);
+        this.serverAnnotProcessor.processConfigurations(bean);
+        this.serverAnnotProcessor.processCallbacks(bean);
+        return bean;
+    }
 
-	@Override
-	public void postProcessBeforeDestruction(Object bean, String name) {
-		this.serverAnnotProcessor.deprocessCallbacks(bean);
-	}
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String name) {
+        return bean;
+    }
 
-	@Override
-	public boolean requiresDestruction(Object bean) {
-		return true;
-	}
+    @Override
+    public void postProcessBeforeDestruction(Object bean, String name) {
+        this.serverAnnotProcessor.deprocessCallbacks(bean);
+    }
+
+    @Override
+    public boolean requiresDestruction(Object bean) {
+        return true;
+    }
+
 }

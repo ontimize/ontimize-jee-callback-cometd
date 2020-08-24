@@ -22,121 +22,125 @@ import org.springframework.web.context.ServletContextAware;
 @Component
 public class CometDInitializer implements ServletContextAware {
 
-	private static final Logger	logger	= LoggerFactory.getLogger(CometDInitializer.class);
+    private static final Logger logger = LoggerFactory.getLogger(CometDInitializer.class);
 
-	private ServletContext		servletContext;
+    private ServletContext servletContext;
 
-	@Bean(initMethod = "start", destroyMethod = "stop")
-	public BayeuxServer bayeuxServer() {
-		CometDInitializer.logger.info("Creationg Calback BayexServer");
-		BayeuxServerImpl bean = new OntimizeBayeuxServerImpl();
-		this.servletContext.setAttribute(BayeuxServer.ATTRIBUTE, bean);
-		bean.setOption("timeout", "30000");
-		bean.setOption("interval", "0");
-		bean.setOption("maxInterval", "10000");
-		bean.setOption("maxLazyTimeout", "5000");
-		bean.setOption("long-polling.multiSessionInterval", "2000");
-		bean.setOption("services", "org.cometd.examples.ChatService");
-		bean.setOption("ws.cometdURLMapping", "/cometd/*");
-		bean.setOption(ServletContext.class.getName(), this.servletContext);
+    @Bean(initMethod = "start", destroyMethod = "stop")
+    public BayeuxServer bayeuxServer() {
+        CometDInitializer.logger.info("Creationg Calback BayexServer");
+        BayeuxServerImpl bean = new OntimizeBayeuxServerImpl();
+        this.servletContext.setAttribute(BayeuxServer.ATTRIBUTE, bean);
+        bean.setOption("timeout", "30000");
+        bean.setOption("interval", "0");
+        bean.setOption("maxInterval", "10000");
+        bean.setOption("maxLazyTimeout", "5000");
+        bean.setOption("long-polling.multiSessionInterval", "2000");
+        bean.setOption("services", "org.cometd.examples.ChatService");
+        bean.setOption("ws.cometdURLMapping", "/cometd/*");
+        bean.setOption(ServletContext.class.getName(), this.servletContext);
 
-		bean.addListener(new ChannelDebugListener());
-		bean.addListener(new SessionDebugListener());
-		bean.addExtension(new ExtensionDebug());
-		bean.setSecurityPolicy(new MyAppAuthenticator());
-		return bean;
-	}
+        bean.addListener(new ChannelDebugListener());
+        bean.addListener(new SessionDebugListener());
+        bean.addExtension(new ExtensionDebug());
+        bean.setSecurityPolicy(new MyAppAuthenticator());
+        return bean;
+    }
 
-	public static class MyAppAuthenticator extends DefaultSecurityPolicy implements ServerSession.RemoveListener {
+    public static class MyAppAuthenticator extends DefaultSecurityPolicy implements ServerSession.RemoveListener {
 
-		@Override
-		public boolean canHandshake(BayeuxServer server, ServerSession session, ServerMessage message) {
-			if (session.isLocalSession()) {
-				return true;
-			}
+        @Override
+        public boolean canHandshake(BayeuxServer server, ServerSession session, ServerMessage message) {
+            if (session.isLocalSession()) {
+                return true;
+            }
 
-			if ((SecurityContextHolder.getContext().getAuthentication() != null) && (SecurityContextHolder.getContext().getAuthentication().getPrincipal() != null)) {
-				session.addListener(this);
-				return true;
-			}
-			return false;
-		}
+            if ((SecurityContextHolder.getContext().getAuthentication() != null)
+                    && (SecurityContextHolder.getContext().getAuthentication().getPrincipal() != null)) {
+                session.addListener(this);
+                return true;
+            }
+            return false;
+        }
 
-		@Override
-		public void removed(ServerSession session, boolean expired) {
-			// Unlink authentication data from the remote client
-		}
-	}
+        @Override
+        public void removed(ServerSession session, boolean expired) {
+            // Unlink authentication data from the remote client
+        }
 
-	@Override
-	public void setServletContext(ServletContext servletContext) {
-		this.servletContext = servletContext;
-	}
+    }
 
-	public static class ChannelDebugListener implements BayeuxServer.ChannelListener {
+    @Override
+    public void setServletContext(ServletContext servletContext) {
+        this.servletContext = servletContext;
+    }
 
-		private static final Logger logger = LoggerFactory.getLogger(CometDInitializer.ChannelDebugListener.class);
+    public static class ChannelDebugListener implements BayeuxServer.ChannelListener {
 
-		@Override
-		public void configureChannel(ConfigurableServerChannel channel) {
-			ChannelDebugListener.logger.debug("ConfigureChannel: {}", channel);
-		}
+        private static final Logger logger = LoggerFactory.getLogger(CometDInitializer.ChannelDebugListener.class);
 
-		@Override
-		public void channelAdded(ServerChannel channel) {
-			ChannelDebugListener.logger.debug("ChannelAdded: {}", channel);
+        @Override
+        public void configureChannel(ConfigurableServerChannel channel) {
+            ChannelDebugListener.logger.debug("ConfigureChannel: {}", channel);
+        }
 
-		}
+        @Override
+        public void channelAdded(ServerChannel channel) {
+            ChannelDebugListener.logger.debug("ChannelAdded: {}", channel);
 
-		@Override
-		public void channelRemoved(String channelId) {
-			ChannelDebugListener.logger.debug("ChannelRemoved: {}", channelId);
-		}
+        }
 
-	}
+        @Override
+        public void channelRemoved(String channelId) {
+            ChannelDebugListener.logger.debug("ChannelRemoved: {}", channelId);
+        }
 
-	public static class SessionDebugListener implements BayeuxServer.SessionListener {
+    }
 
-		private static final Logger logger = LoggerFactory.getLogger(CometDInitializer.SessionDebugListener.class);
+    public static class SessionDebugListener implements BayeuxServer.SessionListener {
 
-		@Override
-		public void sessionAdded(ServerSession session, ServerMessage message) {
-			SessionDebugListener.logger.debug("SessionAdded: {}, message: {}", session, message);
-		}
+        private static final Logger logger = LoggerFactory.getLogger(CometDInitializer.SessionDebugListener.class);
 
-		@Override
-		public void sessionRemoved(ServerSession session, boolean timedout) {
-			SessionDebugListener.logger.debug("SessionRemoved: {}, timeout: {}", session, timedout);
-		}
+        @Override
+        public void sessionAdded(ServerSession session, ServerMessage message) {
+            SessionDebugListener.logger.debug("SessionAdded: {}, message: {}", session, message);
+        }
 
-	}
+        @Override
+        public void sessionRemoved(ServerSession session, boolean timedout) {
+            SessionDebugListener.logger.debug("SessionRemoved: {}, timeout: {}", session, timedout);
+        }
 
-	public static class ExtensionDebug implements Extension {
+    }
 
-		private static final Logger logger = LoggerFactory.getLogger(CometDInitializer.ExtensionDebug.class);
+    public static class ExtensionDebug implements Extension {
 
-		@Override
-		public boolean rcv(ServerSession from, Mutable message) {
-			ExtensionDebug.logger.debug("rcv from: {}, message: {}", from, message);
-			return true;
-		}
+        private static final Logger logger = LoggerFactory.getLogger(CometDInitializer.ExtensionDebug.class);
 
-		@Override
-		public boolean rcvMeta(ServerSession from, Mutable message) {
-			ExtensionDebug.logger.debug("rcvMeta from: {}, message: {}", from, message);
-			return true;
-		}
+        @Override
+        public boolean rcv(ServerSession from, Mutable message) {
+            ExtensionDebug.logger.debug("rcv from: {}, message: {}", from, message);
+            return true;
+        }
 
-		@Override
-		public boolean send(ServerSession from, ServerSession to, Mutable message) {
-			ExtensionDebug.logger.debug("send from: {}, to: {}, message: {}", from, to, message);
-			return true;
-		}
+        @Override
+        public boolean rcvMeta(ServerSession from, Mutable message) {
+            ExtensionDebug.logger.debug("rcvMeta from: {}, message: {}", from, message);
+            return true;
+        }
 
-		@Override
-		public boolean sendMeta(ServerSession to, Mutable message) {
-			ExtensionDebug.logger.debug("sendMeta to: {}, message: {}", to, message);
-			return true;
-		}
-	}
+        @Override
+        public boolean send(ServerSession from, ServerSession to, Mutable message) {
+            ExtensionDebug.logger.debug("send from: {}, to: {}, message: {}", from, to, message);
+            return true;
+        }
+
+        @Override
+        public boolean sendMeta(ServerSession to, Mutable message) {
+            ExtensionDebug.logger.debug("sendMeta to: {}, message: {}", to, message);
+            return true;
+        }
+
+    }
+
 }

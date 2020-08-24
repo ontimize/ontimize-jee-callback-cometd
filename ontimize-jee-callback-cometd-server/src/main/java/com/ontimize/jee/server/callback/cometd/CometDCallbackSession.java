@@ -9,26 +9,25 @@ import com.ontimize.jee.server.callback.CallbackSession;
  */
 public class CometDCallbackSession implements CallbackSession {
 
-	/** The native session. */
-	private final Object nativeSession;
+    /** The native session. */
+    private final Object nativeSession;
 
-	/**
-	 * Instantiates a new web socket callback session.
-	 *
-	 * @param session
-	 *            the session
-	 */
-	public CometDCallbackSession(ServerSession session) {
-		this.nativeSession = session;
-	}
+    /**
+     * Instantiates a new web socket callback session.
+     * @param session the session
+     */
+    public CometDCallbackSession(ServerSession session) {
+        this.nativeSession = session;
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * @see com.ontimize.jee.server.callback.CallbackSession#getNativeSession()
-	 */
-	@Override
-	public Object getNativeSession() {
-		return this.nativeSession;
-	}
+    /*
+     * (non-Javadoc)
+     *
+     * @see com.ontimize.jee.server.callback.CallbackSession#getNativeSession()
+     */
+    @Override
+    public Object getNativeSession() {
+        return this.nativeSession;
+    }
 
 }
